@@ -6,6 +6,8 @@ package org.httpclient {
 
   import com.adobe.net.URI;
 
+  import com.hurlant.crypto.tls.TLSConfig;
+
   import flash.events.EventDispatcher;
   import flash.events.Event;
   import flash.errors.IllegalOperationError;
@@ -42,6 +44,11 @@ package org.httpclient {
     private var _listener:*;
     private var _timeout:int;
     private var _proxy:URI;
+
+    /**
+     * TLS configuration.
+     */
+    private var _tlsConfig: TLSConfig = null;
 
     /**
      * Create HTTP client.
@@ -116,6 +123,7 @@ package org.httpclient {
       if (listener != null) dispatcher = listener.register();
       else dispatcher = this;
       _socket = new HttpSocket(dispatcher, timeout, _proxy);
+      _socket.setTLSConfig(_tlsConfig);
       _socket.request(uri, request);
     }
 
@@ -262,6 +270,12 @@ package org.httpclient {
     public function del(uri:URI):void {
       request(uri, new Delete());
     }
-  }
 
+    /**
+     * Set the TLS configuration for the HTTPS connections.
+     */
+    public function setTLSConfig(config: TLSConfig): void {
+      _tlsConfig = config;
+    }
+  }
 }

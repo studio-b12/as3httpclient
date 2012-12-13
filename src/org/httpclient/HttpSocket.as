@@ -5,6 +5,7 @@
 package org.httpclient {
 
   import com.adobe.net.URI;
+  import com.hurlant.crypto.tls.TLSConfig;
   import com.hurlant.crypto.tls.TLSSocket;
 
   import flash.net.Socket;
@@ -57,6 +58,11 @@ package org.httpclient {
     private var _closed:Boolean;
 
     /**
+     * TLS configuration.
+     */
+    private var _tlsConfig: TLSConfig = null;
+
+    /**
      * Create HTTP socket.
      *
      * @param dispatcher Event dispatcher
@@ -73,7 +79,7 @@ package org.httpclient {
      * Create Socket or TLSSocket depending on URI scheme (http or https).
      */
     protected function createSocket(secure:Boolean = false):void {
-      if (secure && !_proxy) _socket = new TLSSocket();
+      if (secure && !_proxy) _socket = new TLSSocket(null, 0, _tlsConfig);
       else _socket = new Socket();
 
       _socket.addEventListener(Event.CONNECT, onConnect);
@@ -170,7 +176,7 @@ package org.httpclient {
       var onProxyComplete:Function = function(contentLength:Number):void {
         _timer.stop();
         if (proxyResponse.isSuccess) {
-          var socket:TLSSocket = new TLSSocket();
+          var socket:TLSSocket = new TLSSocket(null, 0, _tlsConfig);
           socket.startTLS(_socket, uri.authority);
           _socket = socket;
           _socket.addEventListener(Event.CONNECT, onConnect);
@@ -336,7 +342,11 @@ package org.httpclient {
       _dispatcher.dispatchEvent(event.clone());
     }
 
-
-
+    /**
+     * Set the TLS configuration.
+     */
+    public function setTLSConfig(config: TLSConfig): void {
+      _tlsConfig = config;
+    }
   }
 }
