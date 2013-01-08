@@ -28,7 +28,7 @@ package org.httpclient.io {
     public static function readFile(file:*):HttpFileStream {
       var stream:HttpFileStream = new HttpFileStream(file.size);
       stream.readAhead = HttpRequestBuffer.BLOCK_SIZE;
-      stream.open(file, FileMode.READ);
+      stream.openAsync(file, FileMode.READ);
       return stream;
     }
 
