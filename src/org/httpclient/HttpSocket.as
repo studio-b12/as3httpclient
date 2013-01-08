@@ -22,7 +22,6 @@ package org.httpclient {
 
   import org.httpclient.io.HttpRequestBuffer;
   import org.httpclient.io.HttpResponseBuffer;
-  import org.httpclient.io.HttpBuffer;
 
   import org.httpclient.events.*;
 
@@ -61,6 +60,10 @@ package org.httpclient {
      * TLS configuration.
      */
     private var _tlsConfig: TLSConfig = null;
+
+    private var _headerBytes:ByteArray;
+    private var _request:HttpRequest;
+    private var _timerNextChunk:Timer;
 
     /**
      * Create HTTP socket.
@@ -105,11 +108,13 @@ package org.httpclient {
       _closed = true;
       Log.debug("Called close");
       _timer.stop();
+      if (_timerNextChunk) _timerNextChunk.stop();
       // Need to check if connected (otherwise closing on unconnected socket throws error)
       if (_socket && _socket.connected) {
         _socket.close();
         _socket = null;
       }
+      if (_headerBytes) _headerBytes.length = 0;
 
       // Dispatch instead of calling onClose which is reserver for socket close notification
       //onClose(new Event(Event.CLOSE));
@@ -209,42 +214,56 @@ package org.httpclient {
      * @param request Request to write
      */
     protected function sendRequest(uri:URI, request:HttpRequest):void {
+      _request = request;
       // Prepare response buffer
       _responseBuffer = new HttpResponseBuffer(request.hasResponseBody, onResponseHeader, onResponseData, onResponseComplete);
 
       Log.debug("Request URI: " + uri + " (" + request.method + ")");
-      var headerBytes:ByteArray = request.getHeader(uri, _proxy, HTTP_VERSION);
+      _headerBytes = request.getHeader(uri, _proxy, HTTP_VERSION);
 
       // Debug
-      Log.debug("Header:\n" + headerBytes.readUTFBytes(headerBytes.length));
-      headerBytes.position = 0;
+      Log.debug("Header:\n" + _headerBytes.readUTFBytes(_headerBytes.length));
+      _headerBytes.position = 0;
 
-      _socket.writeBytes(headerBytes);
+      _socket.writeBytes(_headerBytes);
       _socket.flush();
       _timer.reset();
 
       if (request.hasRequestBody) {
-
         _requestBuffer = new HttpRequestBuffer(request.body);
+        _timerNextChunk = new Timer(30, 1);
+        _timerNextChunk.addEventListener(TimerEvent.TIMER, sendChunk,false, 0, true);
+        _timerNextChunk.start();
+      } else
+        complete();
+    }
 
-        Log.debug("Sending request data");
-        while (_requestBuffer.hasData) {
+    protected function sendChunk(e:TimerEvent):void {
+        if (_requestBuffer.hasData) {
           var bytes:ByteArray = _requestBuffer.read();
           //Log.debug("<" + bytes.length + ">");
           if (bytes.length > 0) {
 
             _socket.writeBytes(bytes);
-            _timer.reset();
-
             // We are totally fucked.
             // https://bugs.adobe.com/jira/browse/FP-6
             _socket.flush();
           }
         }
+
+        _timer.reset();
+
+        if (_requestBuffer.hasData) {
+            _timerNextChunk.reset();
+            _timerNextChunk.start();
+        } else
+            complete();
       }
+
+    private function complete():void {
       Log.debug("Send request done");
-      headerBytes.position = 0;
-      onRequestComplete(request, headerBytes.readUTFBytes(headerBytes.length));
+      _headerBytes.position = 0;
+      onRequestComplete(_request, _headerBytes.readUTFBytes(_headerBytes.length));
     }
 
 

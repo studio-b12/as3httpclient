@@ -3,8 +3,6 @@
  * See LICENSE.txt for full license information.
  */
 package org.httpclient.io {
-
-  import com.adobe.utils.StringUtil;
   import flash.utils.ByteArray;
 
   public class HttpRequestBuffer {
@@ -13,6 +11,8 @@ package org.httpclient.io {
 
     private var _bytesSent:uint = 0;
 
+    private var _buff:ByteArray;
+
     private static const BLOCK_SIZE:uint = 16 * 1024;
 
     /**
@@ -20,6 +20,7 @@ package org.httpclient.io {
      */
     public function HttpRequestBuffer(body:*) {
       _body = body;
+      _buff = new ByteArray();
     }
 
     public function get bytesSent():uint { return _bytesSent; }
@@ -34,15 +35,16 @@ package org.httpclient.io {
      * @return Bytes, or null if end was reached.
      */
     public function read():ByteArray {
-      var bytes:ByteArray = new ByteArray();
       if (_body.bytesAvailable > 0) {
-        var length:uint = Math.min(BLOCK_SIZE, _body.bytesAvailable);
-        _body.readBytes(bytes, 0, length);
-        bytes.position = 0;
-        _bytesSent += bytes.length;
-      }
+        var length:uint = _body.bytesAvailable < BLOCK_SIZE ? _body.bytesAvailable : BLOCK_SIZE;
+        _buff.length = length;
+        _body.readBytes(_buff, 0, length);
+        _buff.position = 0;
+        _bytesSent += length;
+      } else
+        _buff.length = 0;
 
-      return bytes;
+      return _buff;
     }
 
 
