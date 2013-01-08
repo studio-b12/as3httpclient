@@ -13,7 +13,7 @@ package org.httpclient.io {
 
     private var _buff:ByteArray;
 
-    private static const BLOCK_SIZE:uint = 16 * 1024;
+    public static const BLOCK_SIZE:uint = 16 * 1024;
 
     /**
      * Create request buffer.
